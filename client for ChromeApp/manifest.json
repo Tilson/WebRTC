@@ -1,0 +1,17 @@
+{
+  "name": "WebRTC",
+  "version": "1",
+  "manifest_version": 2,
+  "app": {
+    "background": {
+      "scripts": [
+        "main.js"
+      ]
+    }
+  },
+  "permissions": [
+	"desktopCapture",
+    "audioCapture",
+    "videoCapture"
+  ]
+}

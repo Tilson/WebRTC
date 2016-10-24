@@ -1,0 +1,145 @@
+<html>
+<body style = "margin-left: 30px;margin-top: 0px;margin-right: 30px;margin-bottom: 0px">
+	<div style = "background: orange;font-size: 28pt">
+		<div style = "color: white">Desktop Streaming Demo</div>
+	</div>
+	<br>
+	<div id = "remote" style = "width: 100%">
+		<video id="remoteVideo1" autoplay width = '1024' height = '768' style = "position: relative;left: 40px;top: 100px;width: 45%;height: 50%;border-color: gray;border-width: 2;border-style: solid;background: black"></video>
+		<video id="remoteVideo2" autoplay width = '1024' height = '768' style = "position: relative;left: 60px;top: 100px;width: 45%;height: 50%;border-color: gray;border-width: 2;border-style: solid;background: black"></video>
+	</div>
+    <!--div id = "devide" style = "position: absolute;left: 0px;bottom: 110px;font-size: 16pt">Current Device: </div!-->
+	<!--div id = "_devide" style = "position: absolute;left: 0px;bottom: 85px;font-size: 16pt">None</div!-->
+	
+    <script>
+        var socket = new WebSocket("ws://192.168.200.160:3000");
+        var pc = new webkitRTCPeerConnection(null);
+		var pc2 = new webkitRTCPeerConnection(null);
+		
+        pc.onicecandidate = function(event){
+            if (event.candidate !== null) {
+                socket.send(JSON.stringify({
+                    "event": "_ice_candidate",
+                    "data": {
+                        "candidate": event.candidate
+                    },
+					"target": _id
+                }));
+            }
+        };
+		
+		pc2.onicecandidate = function(event){
+            if (event.candidate !== null) {
+                socket.send(JSON.stringify({
+                    "event": "_ice_candidate",
+                    "data": {
+                        "candidate": event.candidate
+                    },
+					"target": _id
+                }));
+            }
+        };
+        var count = 0;
+		var _id;
+		var isFirst;
+        pc.onaddstream = function(event){
+			isFirst = true;
+            document.getElementById('remoteVideo1').src = URL.createObjectURL(event.stream);
+        };
+		
+		pc2.onaddstream = function(event){
+            document.getElementById('remoteVideo2').src = URL.createObjectURL(event.stream);
+        };
+		
+		var sendAnswerFn = function(desc){
+            pc.setLocalDescription(desc);
+            socket.send(JSON.stringify({
+                "event": "_answer",
+                "data": {
+                    "sdp": desc
+                },
+				"target": _id
+            }));
+        };
+		
+		var sendAnswerFn2 = function(desc){
+            pc2.setLocalDescription(desc);
+            socket.send(JSON.stringify({
+                "event": "_answer",
+                "data": {
+                    "sdp": desc
+                },
+				"target": _id
+            }));
+        };
+		
+		socket.onmessage = function(event){
+            var json = JSON.parse(event.data);
+			if(json.event == "_login")
+			{
+			//	var input = document.createElement('input');
+			//	var br = document.createElement("br");
+			//	input.type = 'button';
+			//	input.id = count;
+			//	input.value = 'Client ' + (count + 1);
+			//	input.width = 100;
+			//	input.height = 80;
+			//	input.onclick = function(){
+			//		if(_id == this.id)
+			//		{
+			//			return;
+			//		}
+					_id = json.data - 1;
+					socket.send(JSON.stringify({ 
+						"event": "_button",
+						"data": _id,
+						"target": _id
+					}));
+			//		document.getElementById("_devide").innerText = input.value + ' (1024x768)';
+			//	}
+			//	document.body.appendChild(input);
+			//	document.body.appendChild(br);
+			//	document.getElementById(count).style.width = 100;
+			//	document.getElementById(count).style.height = 60;
+			//	document.getElementById(count).style.fontSize = '16pt';
+			//	document.getElementById(count).style.marginTop = "30px";
+			//	++count;
+			}
+            else if(json.event === "_ice_candidate")
+			{
+				if(!isFirst)
+				{
+					pc.addIceCandidate(new RTCIceCandidate(json.data.candidate));
+				}
+                else
+				{
+					pc2.addIceCandidate(new RTCIceCandidate(json.data.candidate));
+				}
+            }
+			else
+			{
+				if(!isFirst)
+				{
+					pc.setRemoteDescription(new RTCSessionDescription(json.data.sdp), function(){
+						pc.createAnswer(sendAnswerFn, function (error) {
+							console.log('Failure callback: ' + error);
+						});
+					}, function(e){
+						console.log(e)
+					});
+				}
+				else
+				{
+					pc2.setRemoteDescription(new RTCSessionDescription(json.data.sdp), function(){
+						pc2.createAnswer(sendAnswerFn2, function (error) {
+							console.log('Failure callback: ' + error);
+						});
+					}, function(e){
+						console.log(e)
+					});
+				}
+            }
+        };
+    </script>
+</body>
+</html>
